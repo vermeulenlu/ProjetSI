@@ -6,10 +6,10 @@
 
 
 ///////////////////////////////////////////////////////////////////////
-/////// Fonction utiles pour la créations des buffers /////////////////
+/////// Fonctions utiles pour la créations des buffers /////////////////
 ///////////////////////////////////////////////////////////////////////
 
-typedef struct {
+/*typedef struct {
   fractal *buffer1;
   int n;
   int front;
@@ -77,11 +77,31 @@ void BuffCalcul(sbuf_t *b1 , sbuf_t *b2)
   fractal *f = remove(b1);
   Calcul_fractale(f);
   insert(b2,f);
-}
+}*/
 
 
 
 int main(int argc, char **argv)
 {
+  int nbrFichier = 0;
+  int doAll = 0;
+  int maxThread = 4;
 
+  int i=1;
+  for(i=1;i<argc;i++){
+    if(strcmp(argv[i],"-d")==0){
+      doAll=1;
+    }
+    else if(strcmp(argv[i],"--maxthreads")==0){
+      maxThread=*argv[i+1];
+      i++;
+    }
+    else{
+        //c'est un fichier
+        nbrFichier++;
+    }
+  }
+  printf("%d\n",nbrFichier);
+  printf("%d\n",doAll);
+  printf("%i\n",maxThread);
 }
