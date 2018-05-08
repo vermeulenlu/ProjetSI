@@ -5,7 +5,7 @@
 #include "./libfractal/fractal.h"
 
 
-#include <stdio.h>
+/*#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -32,7 +32,7 @@ sem_t full;
 //////////////////////////////////////////////////
 
 /*Calcul du tableau de pixel du tableau*/
-double Calcul_fractale(const struct fractal *f)
+/*double Calcul_fractale(const struct fractal *f)
 {
   int width=0;
   int height=0;
@@ -97,23 +97,16 @@ void *CalculFractale(void *item)
     }
   }
   return (void*) Runner;
-}
+}*/
 
 
 int main(int argc, char **argv)
-{
-
-}
-
-
-
 {
   int j=0;
   int nbrFichier = 0;
   int doAll = 0;
   int maxThread = 1;
-  char NomFichier[argc-1];
-
+  char* NomFichier[argc-1];
 
   int i=1;
   for(i=1;i<argc;i++){
@@ -126,20 +119,36 @@ int main(int argc, char **argv)
     }
     else{
         //c'est un fichier
-        strcpy(&NomFichier[nbrFichier],argv[i]);
+        strcpy(NomFichier[nbrFichier],argv[i]);
         nbrFichier++;
         j++;
 
 
     }
   }
-  printf("%s\n",NomFichier[0]);
+}
+  int err;
+  int sem_init(&(empty),0,maxthreads);
+  int sem_init(&(full),0,0);
+  err=pthread_mutex_init(&(mutex),NULL);
+  if(err!=0){
+    error(err,"pthread_mutex_init");
+  }
+  buffer1=(struct fractal **) malloc(maxthreads*sizeof(struct fractal *));
 
   //tableux de threads en fonction du nombre de fichier
-  //pthread_t* producteur = (pthread_t*)malloc(nbrFichier*sizeof(pthread_t));
-  //char* NomFichier[nbrFichier];
-  //int j=0;
-  /*for(j=0; j<nbrFichier; j++){
-    pthread_create(&(producteur[j]),NULL,LireFichier,(void *) &NomFichier[j])
-  }*/
-}
+  pthread_t* producteur = (pthread_t*)malloc(nbrFichier*sizeof(pthread_t));
+  int j=0;
+  for(j=0; j<nbrFichier; j++){
+    err=pthread_create(&(producteur[j]),NULL,LireFichier,(void *) &NomFichier[j])
+    if(err!=0){
+      error(err,"pthread_create");
+    }
+  }
+  pthread_t* consommateur = (pthread_t*)malloc(maxthreads*sizeof(pthread_t));
+  for(j=0; j<maxthreads; j++){
+    err=pthread_create(&(consommateur[j]),NULL,Consom_fractal,(void *) &NomFichier[j]);
+    if(err!=0){
+      error(err,"pthread_create");
+    }
+  }
