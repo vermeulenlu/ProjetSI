@@ -106,7 +106,7 @@ int main(int argc, char **argv)
 }
 
 
-int main(int argc, char **argv)
+
 {
   int nbrFichier = 0;
   int doAll = 0;
