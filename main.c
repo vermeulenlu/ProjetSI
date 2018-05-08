@@ -72,9 +72,12 @@ void Calcul_fractale(const struct fractal *f)
   }
 }
 
-
-
-
+void BuffCalcul(sbuf_t *b1 , sbuf_t *b2)
+{
+  fractal *f = remove(b1);
+  Calcul_fractale(f);
+  insert(b2,f);
+}
 
 
 
