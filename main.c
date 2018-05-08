@@ -106,7 +106,7 @@ int main(int argc, char **argv)
 }
 
 
-int main(int argc, char **argv)
+
 {
   int j=0;
   int nbrFichier = 0;
