@@ -108,6 +108,7 @@ int main(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+  int j=0;
   int nbrFichier = 0;
   int doAll = 0;
   int maxThread = 1;
@@ -127,6 +128,8 @@ int main(int argc, char **argv)
         //c'est un fichier
         strcpy(&NomFichier[nbrFichier],argv[i]);
         nbrFichier++;
+        j++;
+
 
     }
   }
