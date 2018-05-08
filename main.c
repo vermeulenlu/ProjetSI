@@ -85,7 +85,9 @@ int main(int argc, char **argv)
 {
   int nbrFichier = 0;
   int doAll = 0;
-  int maxThread = 4;
+  int maxThread = 1;
+  char NomFichier[argc-1];
+
 
   int i=1;
   for(i=1;i<argc;i++){
@@ -93,15 +95,23 @@ int main(int argc, char **argv)
       doAll=1;
     }
     else if(strcmp(argv[i],"--maxthreads")==0){
-      maxThread=*argv[i+1];
+      maxThread=atoi(argv[i+1]);
       i++;
     }
     else{
         //c'est un fichier
+        strcpy(&NomFichier[nbrFichier],argv[i]);
         nbrFichier++;
+
     }
   }
-  printf("%d\n",nbrFichier);
-  printf("%d\n",doAll);
-  printf("%i\n",maxThread);
+  printf("%s\n",NomFichier[0]);
+
+  //tableux de threads en fonction du nombre de fichier
+  //pthread_t* producteur = (pthread_t*)malloc(nbrFichier*sizeof(pthread_t));
+  //char* NomFichier[nbrFichier];
+  //int j=0;
+  /*for(j=0; j<nbrFichier; j++){
+    pthread_create(&(producteur[j]),NULL,LireFichier,(void *) &NomFichier[j])
+  }*/
 }
