@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <SDL/SDL.h>
-#include "/etinfo/users/2018/jhouyoux/Desktop/project_2018_template/libfractal/fractal.h"
+#include "./fractal.h"
 
 #define MAX_ITER 4096
 #define itoc(x) ((0x00ffffff/MAX_ITER)*(x))

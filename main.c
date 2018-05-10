@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "/etinfo/users/2018/jhouyoux/Desktop/project_2018_template/libfractal/fractal.h"
+#include "./libfractal/fractal.h"
 #include <pthread.h>
 #include <semaphore.h>
 
@@ -17,9 +17,10 @@ struct fractal **buffer1;
 
 int isEmpty=0;
 int doAll=0;
-int isReading=1;
+int isReading=0;
 
 pthread_mutex_t mutex;
+pthread_mutex_t mutex2;
 sem_t empty;
 sem_t full;
 pthread_t *producteur;
@@ -110,10 +111,11 @@ void *LireFichier(void * item)
      int j;
      for(j=0;j<t;j++)
      {
-     if(buffer1[i]==NULL)
+     if(buffer1[j]==NULL)
        {
-         buffer1[i]=Runner;
+         buffer1[j]=Runner;
          isEmpty++;
+         printf("Insertion de %s dans le buffer\n",fractal_get_name(Runner));
          Runner=NULL;
        }
       else
@@ -134,7 +136,12 @@ void *LireFichier(void * item)
  {
    printf("impossible d'ouvrir le fichier");
  }
- isReading--;
+ pthread_mutex_lock(&mutex2);
+ if(isReading>0)
+ {
+   isReading--;
+ }
+ pthread_mutex_unlock(&mutex2);
 }
 
 /////////////////////////////////////////
@@ -148,51 +155,57 @@ void *Consom_fractal(void *item)
 
   while(isEmpty!=0 || isReading!=0)
   {
+    printf("je recommence la boucle , isEmpty = %d , isReading = %d\n",isEmpty,isReading);
     if(isEmpty !=0)
     {
-    sem_wait(&full);
-    pthread_mutex_lock(&mutex);
-    int t=1;
-    int i;
+      sem_wait(&full);
+      pthread_mutex_lock(&mutex);
+      int t=1;
+      int i;
 
-    for(i=0;i<t;i++)
-    {
-      if(buffer1[i]!=NULL)
+      for(i=0;i<t;i++)
       {
-        Runner=buffer1[i];
-        isEmpty--;
-        buffer1[i]=NULL;
+        if(buffer1[i]!=NULL)
+        {
+          Runner=buffer1[i];
+            isEmpty--;
+          buffer1[i]=NULL;
+          printf("on retire %s du buffer\n",fractal_get_name(Runner));
+        }
+        else
+        {
+          t++;
+        }
       }
-      else
+      pthread_mutex_unlock(&mutex);
+      sem_post(&empty);
+      double moyenne = Calcul_fractale(Runner);
+      fractal_set_moyenne(Runner,moyenne);
+      printf("%s est calculée \n",fractal_get_name(Runner));
+      if(doAll==1)
       {
-        t++;
+        const char *lefichier;
+        lefichier = fractal_get_name(Runner);
+        write_bitmap_sdl(Runner,lefichier);
       }
-    }
-    pthread_mutex_unlock(&mutex);
-    sem_post(&empty);
-    double moyenne = Calcul_fractale(Runner);
-    fractal_set_moyenne(Runner,moyenne);
-    if(doAll==1)
+
+    if(MM==NULL)
     {
-      const char *lefichier;
-      lefichier = fractal_get_name(Runner);
-      write_bitmap_sdl(Runner,lefichier);
-    }
-  }
-  if(MM==NULL)
-  {
-    MM=Runner;
-  }
-  else
-  {
-    if(fractal_get_moyenne(MM)<fractal_get_moyenne(Runner))
-    {
-      fractal_free(MM);
       MM=Runner;
     }
     else
     {
-      fractal_free(Runner);
+      if(fractal_get_moyenne(MM)<fractal_get_moyenne(Runner))
+      {
+        fractal_free(MM);
+        printf("%s a une meilleure moyenne, libération de l'ancienne\n",fractal_get_name(Runner));
+        MM=Runner;
+      }
+      else
+      {
+        printf("%s libérée car moins bonne moyenne\n",fractal_get_name(Runner));
+        fractal_free(Runner);
+      }
     }
   }
 }
@@ -208,7 +221,7 @@ int main(int argc, char *argv[])
 
   int j=0;
   int nbrFichier = 0;
-  int maxThread = 3;
+  int maxThread = 7;
   char* NomFichier[argc-1];
 
   int i=1;
@@ -227,6 +240,7 @@ int main(int argc, char *argv[])
     {
       NomFichier[nbrFichier]=argv[i];
       nbrFichier++;
+      isReading++;
       j++;
     }
   }
@@ -242,6 +256,11 @@ int main(int argc, char *argv[])
   if(err!=0)
   {
     printf("Erreur dans l'Initaialistion du mutex" );
+  }
+  err=pthread_mutex_init(&mutex2,NULL);
+  if(err!=0)
+  {
+    printf("Erreur dans l'Initaialistion du mutex2" );
   }
   //Création du buffer
   buffer1=(struct fractal **) malloc(maxThread*sizeof(struct fractal *));
@@ -303,8 +322,8 @@ int main(int argc, char *argv[])
    }
    if(doAll==0)
    {
-     write_bitmap_sdl(MM,"Output");
-     printf("On imprime le thread n°%d car il possède la meilleure moyenne\n",m+1);
+     write_bitmap_sdl(MM,"Output/Output");
+     printf("On imprime %s car il possède la meilleure moyenne\n",fractal_get_name(MM));
    }
    else
    {

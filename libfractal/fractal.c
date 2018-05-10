@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "/etinfo/users/2018/jhouyoux/Desktop/project_2018_template/libfractal/fractal.h"
+#include "./fractal.h"
 #include <string.h>
 
 
