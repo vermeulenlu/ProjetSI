@@ -14,6 +14,7 @@ void *LireFichier(void *item);
 void *Consom_fractal(void *item);
 
 struct fractal **buffer1;
+struct fractal *MM=NULL;
 
 int isEmpty=0;
 int doAll=0;
@@ -21,6 +22,7 @@ int isReading=0;
 
 pthread_mutex_t mutex;
 pthread_mutex_t mutex2;
+pthread_mutex_t MoyenneX;
 sem_t empty;
 sem_t full;
 pthread_t *producteur;
@@ -151,7 +153,6 @@ void *LireFichier(void * item)
 void *Consom_fractal(void *item)
 {
   struct fractal *Runner=NULL;
-  struct fractal *MM=NULL;
 
   while(isEmpty!=0 || isReading!=0)
   {
@@ -188,27 +189,31 @@ void *Consom_fractal(void *item)
         lefichier = fractal_get_name(Runner);
         write_bitmap_sdl(Runner,lefichier);
       }
-
-    if(MM==NULL)
-    {
-      MM=Runner;
-    }
-    else
-    {
-      if(fractal_get_moyenne(MM)<fractal_get_moyenne(Runner))
-      {
-        fractal_free(MM);
-        printf("%s a une meilleure moyenne, libération de l'ancienne\n",fractal_get_name(Runner));
-        MM=Runner;
-      }
       else
       {
-        printf("%s libérée car moins bonne moyenne\n",fractal_get_name(Runner));
-        fractal_free(Runner);
+        if(MM==NULL)
+        {
+          MM=Runner;
+        }
+        else
+        {
+          pthread_mutex_lock(&MoyenneX);
+          if(fractal_get_moyenne(MM)<fractal_get_moyenne(Runner))
+          {
+            fractal_free(MM);
+            printf("%s a une meilleure moyenne, libération de l'ancienne\n",fractal_get_name(Runner));
+            MM=Runner;
+          }
+          else
+          {
+            printf("%s libérée car moins bonne moyenne\n",fractal_get_name(Runner));
+            fractal_free(Runner);
+          }
+          pthread_mutex_unlock(&MoyenneX);
+        }
       }
     }
-  }
-}
+ }
   return (void*) MM;
 }
 
@@ -221,11 +226,12 @@ int main(int argc, char *argv[])
 
   int j=0;
   int nbrFichier = 0;
-  int maxThread = 7;
-  char* NomFichier[argc-1];
+  int maxThread = 4;
+  char * OutPut = argv[argc-1];
+  char* NomFichier[argc];
 
   int i=1;
-  for(i=1;i<argc;i++)
+  for(i=1;i<argc-1;i++)
   {
     if(strcmp(argv[i],"-d")==0)
     {
@@ -262,6 +268,12 @@ int main(int argc, char *argv[])
   {
     printf("Erreur dans l'Initaialistion du mutex2" );
   }
+
+  err=pthread_mutex_init(&MoyenneX,NULL);
+  if(err!=0)
+  {
+    printf("Erreur dans l'Initaialistion du mutex2" );
+  }
   //Création du buffer
   buffer1=(struct fractal **) malloc(maxThread*sizeof(struct fractal *));
 
@@ -290,39 +302,20 @@ int main(int argc, char *argv[])
     }
   }
   //Attente des calculs de fractales et sauvegarde de la moyenne la plus hauteur
-   struct fractal *MM=NULL;
-   struct fractal *runner;
    int err2;
-   int m=0;
    for(j=0;j<maxThread;j++)
    {
-     err2=pthread_join(consommateur[j],(void **)&runner);
+     err2=pthread_join(consommateur[j],NULL);
      printf("Valeur du thread n°%d retournée\n",j+1);
      if(err2!=0)
      {
        printf("Erreur dans le join");
      }
-     if(MM==NULL)
-     {
-       MM=runner;
-     }
-     else
-     {
-       if(fractal_get_moyenne(MM)<fractal_get_moyenne(runner))
-       {
-         fractal_free(MM);
-         MM=runner;
-         m=j;
-       }
-       else
-       {
-         fractal_free(runner);
-       }
-     }
    }
    if(doAll==0)
    {
-     write_bitmap_sdl(MM,"Output/Output");
+     write_bitmap_sdl(MM,OutPut);
+     printf("JE SUIS LA\n");
      printf("On imprime %s car il possède la meilleure moyenne\n",fractal_get_name(MM));
    }
    else
