@@ -19,10 +19,12 @@ struct fractal *MM=NULL;
 int isEmpty=0;
 int doAll=0;
 int isReading=0;
+int nbrFract=0;
 
 pthread_mutex_t mutex;
 pthread_mutex_t mutex2;
 pthread_mutex_t MoyenneX;
+pthread_mutex_t Compteur;
 sem_t empty;
 sem_t full;
 pthread_t *producteur;
@@ -78,6 +80,9 @@ void *LireFichier(void * item)
         count++;
       }
     }
+    pthread_mutex_lock(&Compteur);
+    nbrFract=nbrFract+count;
+    pthread_mutex_unlock(&Compteur);
     char tabName[count][64];
     int tabWidth[count];
     int tabHeight[count];
@@ -132,11 +137,11 @@ void *LireFichier(void * item)
  int err= fclose(texte);
  if(err!=0)
  {
-   printf("Impossible de fermer le fichier");
+   fprintf(stderr, "Impossible de fermer le fichier");
  }
  if(texte==NULL)
  {
-   printf("impossible d'ouvrir le fichier");
+   fprintf(stderr, "impossible d'ouvrir le fichier");
  }
  pthread_mutex_lock(&mutex2);
  if(isReading>0)
@@ -156,7 +161,6 @@ void *Consom_fractal(void *item)
 
   while(isEmpty!=0 || isReading!=0)
   {
-    printf("je recommence la boucle , isEmpty = %d , isReading = %d\n",isEmpty,isReading);
     if(isEmpty !=0)
     {
       sem_wait(&full);
@@ -171,7 +175,6 @@ void *Consom_fractal(void *item)
           Runner=buffer1[i];
             isEmpty--;
           buffer1[i]=NULL;
-          printf("on retire %s du buffer\n",fractal_get_name(Runner));
         }
         else
         {
@@ -201,12 +204,10 @@ void *Consom_fractal(void *item)
           if(fractal_get_moyenne(MM)<fractal_get_moyenne(Runner))
           {
             fractal_free(MM);
-            printf("%s a une meilleure moyenne, libération de l'ancienne\n",fractal_get_name(Runner));
             MM=Runner;
           }
           else
           {
-            printf("%s libérée car moins bonne moyenne\n",fractal_get_name(Runner));
             fractal_free(Runner);
           }
           pthread_mutex_unlock(&MoyenneX);
@@ -223,10 +224,9 @@ void *Consom_fractal(void *item)
 
 int main(int argc, char *argv[])
 {
-
   int j=0;
   int nbrFichier = 0;
-  int maxThread = 4;
+  int maxThread = 1;
   char * OutPut = argv[argc-1];
   char* NomFichier[argc];
 
@@ -247,7 +247,6 @@ int main(int argc, char *argv[])
       NomFichier[nbrFichier]=argv[i];
       nbrFichier++;
       isReading++;
-      j++;
     }
   }
 
@@ -261,21 +260,28 @@ int main(int argc, char *argv[])
   err=pthread_mutex_init(&mutex,NULL);
   if(err!=0)
   {
-    printf("Erreur dans l'Initaialistion du mutex" );
+    fprintf(stderr, "Erreur dans l'initialisation du mutex\n");
   }
   err=pthread_mutex_init(&mutex2,NULL);
   if(err!=0)
   {
-    printf("Erreur dans l'Initaialistion du mutex2" );
+    fprintf(stderr, "Erreur dans l'initialisation du mutex2\n");
   }
 
   err=pthread_mutex_init(&MoyenneX,NULL);
   if(err!=0)
   {
-    printf("Erreur dans l'Initaialistion du mutex2" );
+    fprintf(stderr, "Erreur dans l'initialisation du Moyenne\n");
   }
+
+  err=pthread_mutex_init(&Compteur,NULL);
+  if(err!=0)
+  {
+    fprintf(stderr, "Erreur dans l'initialisation du mutex Compteur\n");
+  }
+
   //Création du buffer
-  buffer1=(struct fractal **) malloc(maxThread*sizeof(struct fractal *));
+  buffer1=(struct fractal **) malloc(100*sizeof(struct fractal *));
 
   //tableux de threads en fonction du nombre de fichier et maxthreads
   pthread_t* producteur = (pthread_t*)malloc(nbrFichier*sizeof(pthread_t));
@@ -285,20 +291,18 @@ int main(int argc, char *argv[])
   for(j=0; j<nbrFichier; j++)
   {
     err=pthread_create(&(producteur[j]),NULL,LireFichier,(void *) NomFichier[j]);
-    printf("Création du thread de Lecture n°%d\n",j+1);
     if(err!=0)
     {
-      printf("Erreur dans la création des threads de lecture\n");
+      fprintf(stderr, "Erreur dans la création du thread de lecture\n");
     }
   }
   //Création des threads de calcul
   for(j=0; j<maxThread; j++)
   {
     err=pthread_create(&consommateur[j],NULL,Consom_fractal,NULL);
-    printf("Création du thread de calcul n°%d\n",j+1);
     if(err!=0)
     {
-      printf("Erreur dans la création des threads de calcul\n");
+      fprintf(stderr, "Erreur dans la création du thread de calcul\n");
     }
   }
   //Attente des calculs de fractales et sauvegarde de la moyenne la plus hauteur
@@ -309,19 +313,28 @@ int main(int argc, char *argv[])
      printf("Valeur du thread n°%d retournée\n",j+1);
      if(err2!=0)
      {
-       printf("Erreur dans le join");
+       fprintf(stderr, "Erreur dans le join\n");
      }
    }
    if(doAll==0)
    {
      write_bitmap_sdl(MM,OutPut);
-     printf("JE SUIS LA\n");
      printf("On imprime %s car il possède la meilleure moyenne\n",fractal_get_name(MM));
+     pthread_mutex_destroy(&mutex);
    }
    else
    {
      printf("Toutes les fractales ont été affichées car vous avez passez l'argument -d\n");
    }
+   free(buffer1);
+   free(consommateur);
+   free(producteur);
+   pthread_mutex_destroy(&mutex);
+   pthread_mutex_destroy(&mutex2);
+   pthread_mutex_destroy(&MoyenneX);
+   pthread_mutex_destroy(&Compteur);
+   sem_destroy(&full);
+   sem_destroy(&empty);
 return 0;
 
 }
